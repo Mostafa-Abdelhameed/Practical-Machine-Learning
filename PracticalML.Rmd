@@ -1,0 +1,111 @@
+---
+title: "Practical Machine learning course project"
+author: "Mostafa Abdelhameed"
+date: "2/23/2020"
+output: html_document
+---
+
+# Overview
+This  is the  report of the Peer Assessment project for Practical Machine Learning course, 
+
+The main goal of the project is to predict the manner in which 6 participants performed some exercise as described below. This is the “classe” variable in the training set. 
+
+# Data loading and analysis
+
+## Motivation
+
+A short description of the datasets content from the authors’ website:
+
+“Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. We made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg)."
+
+### Load libraries
+
+```{r , echo=TRUE, warning=FALSE,message=FALSE}
+rm(list=ls())
+library(knitr)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(corrplot)
+set.seed(12345)
+```
+
+### Data cleaning and loading
+
+```{r , echo=TRUE, warning=FALSE,message=FALSE}
+training <- read.csv("pmltraining.csv")
+testing  <- read.csv("pmltesting.csv")
+```
+
+#### split the data
+
+```{r , echo=TRUE, warning=FALSE,message=FALSE}
+inTrain  <- createDataPartition(training$classe, p=0.7, list=FALSE)
+TrainSet <- training[inTrain, ]
+TestSet  <- training[-inTrain, ]
+dim(TrainSet)
+dim(TestSet)
+```
+#### Clean the data
+
+1.  datasets have 160 variables.
+2.  Those variables have NAs, that can be removed
+3.  The Near Zero variance (NZV) variables are  removed
+4.  the ID variables are  removed .
+
+```{r , echo=TRUE, warning=FALSE,message=FALSE}
+AllNA    <- sapply(TrainSet, function(x) mean(is.na(x))) > 0.95
+TrainSet <- TrainSet[, AllNA==FALSE]
+TestSet  <- TestSet[, AllNA==FALSE]
+
+TrainSet <- TrainSet[, -(1:5)]
+TestSet  <- TestSet[, -(1:5)]
+dim(TrainSet)
+dim(TestSet)
+```
+the number of variables for the analysis has been reduced to 88 only.
+
+
+### Correlation
+```{r , echo=TRUE, warning=FALSE,message=FALSE}
+
+corMatrix<- cor(TrainSet[sapply(TrainSet, function(x) !is.factor(x))])
+corrplot(corMatrix, order = "FPC", method = "color", type = "lower",
+         tl.cex = 0.8, tl.col = rgb(0, 0, 0))
+```
+
+The highly correlated variables are shown in dark colors in the graph
+
+
+### Prediction Model
+Three methods will be applied to model the regressions and the best one (with higher accuracy when applied to the Test dataset) will be used for the quiz predictions. The methods are: Random Forests, Decision Tree and Generalized Boosted Model, as described below.
+A Confusion Matrix is plotted at the end of each analysis to better visualize the accuracy of the models.
+
+#### Desicion Trees
+
+
+# model fit
+
+```{r , echo=TRUE, warning=FALSE,message=FALSE,cache=TRUE}
+set.seed(12345)
+modFitDecTree <- rpart(classe ~ ., data=TrainSet, method="class")
+fancyRpartPlot(modFitDecTree)
+
+# prediction on Test dataset
+predictDecTree <- predict(modFitDecTree, newdata=TestSet, type="class")
+confMatDecTree <- confusionMatrix(predictDecTree, TestSet$classe)
+confMatDecTree
+
+# plot matrix results
+plot(confMatDecTree$table, col = confMatDecTree$byClass,
+     main = paste("Decision Tree - Accuracy =",
+                  round(confMatDecTree$overall['Accuracy'], 4)))
+
+
+```
+
+
